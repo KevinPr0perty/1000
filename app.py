@@ -9,8 +9,6 @@ import tempfile
 import os
 from supabase import create_client, Client
 
-
-
 st.set_page_config(page_title="AI Shirt Tool", layout="wide")
 st.title("🛠️ AI Shirt Tools")
 
@@ -59,104 +57,97 @@ if app_mode == "👕 T-Shirt Title Generator":
 
         uploaded_files = st.file_uploader("Upload T-shirt design images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 
-def preprocess_image(image: Image.Image, color: str) -> Image.Image:
-    gray = ImageOps.grayscale(image)
-    np_img = np.array(gray)
-    
-    # List of dark colors where enhancement is needed
-    dark_colors = ["Black", "Navy", "Brown", "Purple"]
-    
-    if color in dark_colors:
-        # For dark colors, enhance contrast and invert the image
-        contrast = ImageEnhance.Contrast(gray).enhance(2.5)
-        inverted = ImageOps.invert(contrast)
-        return inverted.convert("RGB")
-    else:
-        # For other colors, use the existing contrast logic
-        white_ratio = (np_img > 220).sum() / np_img.size
-        if white_ratio > 0.75:
-            contrast = ImageEnhance.Contrast(gray).enhance(2.5)
-            inverted = ImageOps.invert(contrast)
-            return inverted.convert("RGB")
-    
-    return image
+        if uploaded_files:  # Check if files are uploaded
+            def preprocess_image(image: Image.Image, color: str) -> Image.Image:
+                gray = ImageOps.grayscale(image)
+                np_img = np.array(gray)
+                # List of dark colors where enhancement is needed
+                dark_colors = ["Black", "Navy", "Brown", "Purple"]
+                
+                if color in dark_colors:
+                    contrast = ImageEnhance.Contrast(gray).enhance(2.5)
+                    inverted = ImageOps.invert(contrast)
+                    return inverted.convert("RGB")
+                else:
+                    white_ratio = (np_img > 220).sum() / np_img.size
+                    if white_ratio > 0.75:
+                        contrast = ImageEnhance.Contrast(gray).enhance(2.5)
+                        inverted = ImageOps.invert(contrast)
+                        return inverted.convert("RGB")
+                return image
 
+            def encode_image(image: Image.Image, color: str) -> str:
+                image = preprocess_image(image, color)
+                buffered = io.BytesIO()
+                image.save(buffered, format="PNG")
+                return base64.b64encode(buffered.getvalue()).decode()
 
+            def generate_title_with_gpt(image_b64: str, gender: str, color: str, type: str) -> str:
+                def call_gpt(prompt_text):
+                    messages = [
+                        {
+                            "role": "system",
+                            "content": "You're a creative product copywriter for a fashion brand. Write short, stylish, eye-catching T-shirt product titles from image designs."
+                        },
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": prompt_text},
+                                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
+                            ]
+                        }
+                    ]
+                    response = openai.chat.completions.create(
+                        model="gpt-4o",
+                        messages=messages,
+                        max_tokens=100
+                    )
+                    return response.choices[0].message.content.strip()
 
-def encode_image(image: Image.Image, color: str) -> str:
-    image = preprocess_image(image, color)
-    buffered = io.BytesIO()
-    image.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
+                prompt = f"Generate a detailed and stylish product title for a {color.lower()} cotton {type} for {gender.lower()}s. Base the title on the printed artwork in the image."
+                result = call_gpt(prompt)
 
+                if "can't help" in result.lower() or "i'm sorry" in result.lower():
+                    fallback_prompt = f"Write a trendy product title for the {type} shown in the image."
+                    result = call_gpt(fallback_prompt)
 
-def generate_title_with_gpt(image_b64: str, gender: str, color: str, type: str) -> str:
-    def call_gpt(prompt_text):
-        messages = [
-            {
-                "role": "system",
-                "content": "You're a creative product copywriter for a fashion brand. Write short, stylish, eye-catching T-shirt product titles from image designs."
-            },
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt_text},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_b64}"}}
-                ]
-            }
-        ]
-        response = openai.chat.completions.create(
-            model="gpt-4o",
-            messages=messages,
-            max_tokens=100
-        )
-        return response.choices[0].message.content.strip()
+                return result
 
-    prompt = f"Generate a detailed and stylish product title for a {color.lower()} cotton {type} for {gender.lower()}s. Base the title on the printed artwork in the image."
-    result = call_gpt(prompt)
+            def sanitize_title(title: str) -> str:
+                # Replace accented Spanish letters manually
+                replacements = {
+                    'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
+                    'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
+                    'ñ': 'n', 'Ñ': 'N', 'ü': 'u', 'Ü': 'U'
+                }
 
-    if "can't help" in result.lower() or "i'm sorry" in result.lower():
-        fallback_prompt = f"Write a trendy product title for the {type} shown in the image."
-        result = call_gpt(fallback_prompt)
+                # Replace accented letters
+                for accented_char, plain_char in replacements.items():
+                    title = title.replace(accented_char, plain_char)
 
-    return result
+                # Remove all symbols except '-' and ':'
+                sanitized = ''.join(char if char.isalnum() or char in ['-', ':', ' '] else '' for char in title)
 
+                return sanitized
 
-def sanitize_title(title: str) -> str:
-    # Replace accented Spanish letters manually
-    replacements = {
-        'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-        'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U',
-        'ñ': 'n', 'Ñ': 'N', 'ü': 'u', 'Ü': 'U'
-    }
+            results = []
+            with st.spinner("🧐 Generating creative product titles with GPT-4 Vision..."):
+                for file in uploaded_files:
+                    img = Image.open(file).convert("RGB")
+                    try:
+                        img_b64 = encode_image(img, shirt_color)  # Pass shirt_color here
+                        title = generate_title_with_gpt(img_b64, shirt_gender, shirt_color, shirt_type)
+                        full_title = f"{shirt_gender}'s {descriptor_word} - Cotton {shirt_color} {shirt_type}: \"{title}\""
+                        if custom_keyword:
+                            full_title += f" - {custom_keyword}"
 
-    # Replace accented letters
-    for accented_char, plain_char in replacements.items():
-        title = title.replace(accented_char, plain_char)
+                        sanitized_title = sanitize_title(full_title)
+                        results.append(sanitized_title)
+                    except Exception as e:
+                        results.append(f"ERROR: {e}")
 
-    # Remove all symbols except '-' and ':'
-    sanitized = ''.join(char if char.isalnum() or char in ['-', ':', ' '] else '' for char in title)
+            st.success("✅ All titles generated!")
+            st.text_area("📝 Generated T-Shirt Titles", "\n".join(results), height=300)
 
-    return sanitized
-
-# After generating the title
-if uploaded_files:
-    results = []
-    with st.spinner("🧐 Generating creative product titles with GPT-4 Vision..."):
-        for file in uploaded_files:
-            img = Image.open(file).convert("RGB")
-            try:
-                img_b64 = encode_image(img, shirt_color)  # Pass shirt_color here
-                title = generate_title_with_gpt(img_b64, shirt_gender, shirt_color, shirt_type)
-                full_title = f"{shirt_gender}'s {descriptor_word} - Cotton {shirt_color} {shirt_type}: \"{title}\""
-                if custom_keyword:
-                    full_title += f" - {custom_keyword}"
-
-                sanitized_title = sanitize_title(full_title)
-                results.append(sanitized_title)
-            except Exception as e:
-                results.append(f"ERROR: {e}")
-
-
-    st.success("✅ All titles generated!")
-    st.text_area("📝 Generated T-Shirt Titles", "\n".join(results), height=300)
+        else:
+            st.warning("Please upload at least one image to generate titles.")
