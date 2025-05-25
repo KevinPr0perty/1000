@@ -1,0 +1,9 @@
+streamlit
+numpy
+openai
+supabase
+pillow
+pytesseract
+transformers
+torch
+
