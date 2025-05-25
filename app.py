@@ -9,8 +9,8 @@ import tempfile
 import os
 from supabase import create_client, Client
 
-st.set_page_config(page_title="AI Shirt Tool", layout="wide")
-st.title("🛠️ AI Shirt Tools")
+st.set_page_config(page_title="AI Shirt Tool 1-100", layout="wide")
+st.title("🛠️ AI Shirt Tools 901-1000")
 
 # Mode selection
 app_mode = st.sidebar.selectbox("Select Application", [
@@ -52,7 +52,7 @@ if app_mode == "👕 T-Shirt Title Generator":
         custom_keyword = st.text_input("🔑 Custom Keyword at the End (optional)", value="")
 
         # Preview of example title
-        example_preview = f"{shirt_gender}'s {descriptor_word} - Cotton {shirt_color} {shirt_type}: \"AI-Generated Design\" - {custom_keyword if custom_keyword else ''}"
+        example_preview = f"{shirt_gender}'s {descriptor_word} - {shirt_color} {shirt_type}: \"AI-Generated Design\" - {custom_keyword if custom_keyword else ''}"
         st.markdown(f"**Preview Example:** _{example_preview}_")
 
         uploaded_files = st.file_uploader("Upload T-shirt design images", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
@@ -104,7 +104,7 @@ if app_mode == "👕 T-Shirt Title Generator":
                     )
                     return response.choices[0].message.content.strip()
 
-                prompt = f"Generate a detailed and stylish product title for a {color.lower()} cotton {type} for {gender.lower()}s. Base the title on the printed artwork in the image."
+                prompt = f"Generate a detailed and stylish product title for a {color.lower()} {type} for {gender.lower()}s. Base the title on the printed artwork in the image."
                 result = call_gpt(prompt)
 
                 if "can't help" in result.lower() or "i'm sorry" in result.lower():
@@ -137,7 +137,7 @@ if app_mode == "👕 T-Shirt Title Generator":
                     try:
                         img_b64 = encode_image(img, shirt_color)  # Pass shirt_color here
                         title = generate_title_with_gpt(img_b64, shirt_gender, shirt_color, shirt_type)
-                        full_title = f"{shirt_gender}'s {descriptor_word} - Cotton {shirt_color} {shirt_type}: \"{title}\""
+                        full_title = f"{shirt_gender}'s {descriptor_word} - {shirt_color} {shirt_type}: \"{title}\""
                         if custom_keyword:
                             full_title += f" - {custom_keyword}"
 
