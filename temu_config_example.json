@@ -1,0 +1,30 @@
+{
+  "cookies": "sessionid=YOUR_COOKIE_VALUE; other_cookie=VALUE",
+  "headers": {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json"
+  },
+  "template_path": "template_payload.json",
+  "payload_paths": {
+    "sku": "product.sku",
+    "title": "product.title",
+    "image": "product.images.0"
+  },
+  "sku_paths": [
+    "goods_basic.out_goods_sn"
+  ],
+  "goods_image_path": "goods_basic.goods_gallery.detail_image.0.url",
+  "skc_list_path": "skc_list",
+  "skc_color_parent_name": "Color",
+  "skc_image_path": "carousel_gallery.0.url",
+  "skc_color_image_path": "color_image_url",
+  "image_upload_endpoint": "https://partner-eu.temu.com/api/your-image-upload",
+  "image_upload_method": "POST",
+  "image_upload_field": "file",
+  "image_upload_form": {
+    "bucket": "product-images"
+  },
+  "image_upload_response_path": "data.url",
+  "product_submit_endpoint": "https://partner-eu.temu.com/api/your-product-submit",
+  "product_submit_method": "POST"
+}
